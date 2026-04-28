@@ -1,114 +1,98 @@
-# OCR 服务器
+# ocr-server-go
 
-## 目录
-1. [项目概述](#项目概述)
-2. [特性](#特性)
-3. [安装](#安装)
-4. [使用方法](#使用方法)
-5. [配置选项](#配置选项)
-6. [架构设计](#架构设计)
-7. [性能优化](#性能优化)
-8. [贡献指南](#贡献指南)
-9. [故障排除](#故障排除)
-10. [致谢](#致谢)
-11. [许可证](#许可证)
+**ocr-server-go** 是一款专为 Linux 环境打造的高并发光学字符识别（OCR）微服务程序。本项目采用 Go 语言精心打磨，底层深度对接强大的 PaddleOCR 引擎，致力于为企业级应用提供极速、精准的文本解析能力。凭借卓越的架构设计，它非常适合对吞吐量和稳定性要求严苛的生产场景。
 
-## 项目概述
+## 快速导航
+1. [项目简介](#项目简介)
+2. [核心优势](#核心优势)
+3. [部署指南](#部署指南)
+4. [运行与操作](#运行与操作)
+5. [配置详解](#配置详解)
+6. [技术架构](#技术架构)
+7. [性能表现](#性能表现)
 
-OCR 服务器是一个高性能、可扩展的光学字符识别（OCR）服务，基于 Go 语言构建。它利用 PaddleOCR 引擎提供快速、准确的文本识别功能。这个服务器设计用于处理大量并发的 OCR 请求，适用于需要高吞吐量 OCR 处理的应用场景。
+---
 
-## 特性
+## 核心优势
 
-- **高性能**：利用处理器池来处理多个并发请求。
-- **可扩展性**：根据需求动态调整 OCR 处理器数量。
-- **容错能力**：实现了健康检查和自动处理器重初始化，确保系统稳定性。
-- **灵活输入**：支持图片文件路径和 base64 编码的图片数据。
-- **可配置**：通过 YAML 文件和命令行参数支持灵活配置。
-- **日志记录**：详细的日志记录，支持日志轮转和压缩。
-- **统计信息**：提供实时服务器统计信息以便监控。
-- **自动下载**：如果需要，自动下载所需的 OCR 引擎。
+- **高吞吐调度**：内置独立调优的处理器池（Processor Pool），专治高并发请求拥堵。
+- **弹性扩缩容**：系统会根据任务队列的压力，全自动管理 OCR 实例的创建与回收。
+- **极致高可用**：搭载守护程序级别的健康检查，对失效实例自动执行无感替换，服务坚如磐石。
+- **数据流友好**：支持传统服务器绝对路径读取，同时也支持客户端直接上报 Base64 图片流。
+- **灵活参数化**：深度集成 Viper，支持通过 `yaml` 或命令行参数自由定义启动逻辑。
+- **完善的监控**：提供开箱即用的 `/stats` 性能指标探针以及支持自动切分压缩的日志记录功能。
+- **一键自动化**：内置环境初始化逻辑，若检测无引擎会自动下载必要的 OCR 核心组件。
 
-## 安装
+---
 
-1. 克隆仓库：
-```
+## 部署指南
+
+### 环境准备与编译
+
+1. **获取代码**：
+```bash
 git clone https://github.com/suifei/ocr-server-go.git
 ```
-2. 进入项目目录：
-```
+2. **进入工作区**：
+```bash
 cd ocr-server-go
 ```
-3. 安装依赖：
-```
+3. **拉取依赖包**：
+```bash
 go mod tidy
 ```
-4. 构建项目：
-```
+4. **编译为可执行文件**：
+```bash
 go build -o ocr-server-go cmd/server/main.go
 ```
 
-## 使用方法
+---
 
-### 启动服务器
+## 运行与操作
 
-使用默认配置启动服务器：
+### 基础启动方法
 
-```
+如果你只需要快速体验或测试，可以直接无参数运行（系统将采用内置的最佳实践配置）：
+
+```bash
 ./ocr-server-go
 ```
+> *注：若是全新环境首次运行，程序将自动在后台下载 PaddleOCR 的运行模型和组件。*
 
-服务器首次运行时会自动下载所需的 PaddleOCR 模型。
+### Linux 进阶启动（命令行传参）
 
+为了满足复杂的线上环境，你可以通过启动参数来覆盖默认逻辑：
 
-### Linux 下的命令行启动参数演示
+**指定配置文件启动**：
+只需确保 `.ocr-server-go/config.yaml` 存在，直接启动即可加载。
 
-以下是几种不同配置下在 Linux 上启动服务的命令行示例：
-
-#### 使用默认配置启动服务
-
-```sh
-ocr-server-go
+**通过参数覆盖基础网络设置**：
+```bash
+./ocr-server-go -addr 0.0.0.0 -port 8080 -min-processors 8 -log-file server.log
 ```
 
-#### 使用指定的配置文件启动服务
-
-```sh
-ocr-server-go
+**全参数启动演示（适用于骨灰级调优）**：
+```bash
+./ocr-server-go -addr 192.168.1.100 -port 8080 -ocr /opt/ocr/PaddleOCR-json -min-processors 8 -max-processors 16 -queue-size 200 -scale-threshold 100 -degrade-threshold 50 -idle-timeout 10m -warm-up-count 4 -shutdown-timeout 1m -log-file /var/log/ocr_server.log -log-max-size 200 -log-max-backups 5 -log-max-age 30 -log-compress
 ```
 
-#### 使用命令行参数覆盖配置文件中的设置
-
-```sh
-ocr-server-go -addr 192.168.1.100 -port 8080 -min-processors 8 -log-file ocr_server.log
+**查阅帮助文档**：
+```bash
+./ocr-server-go -help
 ```
 
-#### 仅使用命令行参数启动服务
+### 将其作为 Systemd 后台服务守护
 
-```sh
-ocr-server-go -addr 192.168.1.100 -port 8080 -ocr /opt/ocr/PaddleOCR-json -min-processors 8 -max-processors 16 -queue-size 200 -scale-threshold 100 -degrade-threshold 50 -idle-timeout 10m -warm-up-count 4 -shutdown-timeout 1m -log-file /var/log/ocr_server.log -log-max-size 200 -log-max-backups 5 -log-max-age 30 -log-compress
-```
+在 Linux 生产环境中，强烈建议使用 Systemd 进行进程托管：
 
-#### 显示帮助信息
-
-```sh
-ocr-server-go -help
-```
-
-### 将服务配置为 Systemd 服务
-
-可以创建一个 systemd 服务文件来管理 ocr-server-go：
-
-#### 1. 创建服务文件
-
-```sh
+**1. 编写 Unit 文件**：
+```bash
 sudo nano /etc/systemd/system/ocr-server-go.service
 ```
-
-写入以下内容（根据实际路径修改）：
-
+复制下方模板（请务必将 `/opt/ocr-server-go` 替换为你的真实安装路径）：
 ```ini
 [Unit]
-Description=OCR Server Go
+Description=OCR Server Go Daemon
 After=network.target
 
 [Service]
@@ -122,239 +106,128 @@ WorkingDirectory=/opt/ocr-server-go
 WantedBy=multi-user.target
 ```
 
-#### 2. 启动服务
-
-```sh
+**2. 加载并激活服务**：
+```bash
 sudo systemctl daemon-reload
 sudo systemctl start ocr-server-go
 sudo systemctl enable ocr-server-go
 ```
 
-#### 3. 查看状态与日志
-
-```sh
+**3. 日志巡检与监控**：
+```bash
 sudo systemctl status ocr-server-go
 journalctl -u ocr-server-go -f
 ```
 
-### 配置
+---
 
-可以通过 YAML 文件或命令行参数配置服务器。使用配置文件：
+## API 调用参考
 
-```
-./ocr-server-go
-```
+本服务对外暴露了非常简洁的 RESTful JSON 接口。
 
-使用命令行配置：
-
-```
-./ocr-server-go -addr 192.168.1.100 -port 8080 -min-processors 8 -max-processors 16
-```
-
-### API 使用
-
-对图片进行 OCR 处理：
-
+### 1. 发起 OCR 识别请求
+使用 Base64 编码方式（推荐用于网络传输）：
 ```http
 POST /
 Content-Type: application/json
 
 {
-  "image_path": "/path/to/image.jpg"
+  "image_base64": "此处填入图片的 base64 字符串"
 }
 ```
 
-或使用 base64 编码的图片：
-
+使用本地路径方式（适用于服务和图片在同一台机器）：
 ```http
 POST /
 Content-Type: application/json
 
 {
-  "image_base64": "base64_encoded_image_data"
+  "image_path": "/data/images/test.jpg"
 }
 ```
 
-### 服务器统计
-
-获取服务器统计信息：
-
+### 2. 探针与监控
+获取当前服务器的并发状态、健康度、处理耗时等统计信息：
 ```http
 GET /stats
 ```
 
-## 配置选项
+---
 
-| 选项 | 描述 | 默认值 |
+## 配置详解
+
+服务运行时支持的各项核心配置如下：
+
+| 参数名称 | 作用说明 | 默认参数 |
 |------|------|--------|
-| addr | 服务器地址 | localhost |
-| port | 服务器端口 | 1111 |
-| ocr_exe_path | OCR 可执行文件路径 | 自动检测 |
-| min_processors | 最小处理器数量 | 4 |
-| max_processors | 最大处理器数量 | CPU 核心数 |
-| queue_size | 任务队列大小 | 100 |
-| scale_threshold | 扩展处理器阈值 | 75 |
-| degrade_threshold | 缩减处理器阈值 | 25 |
-| idle_timeout | 处理器空闲超时时间 | 5分钟 |
-| warm_up_count | 预热处理器数量 | 2 |
-| shutdown_timeout | 优雅关闭超时时间 | 30秒 |
-| log_file_path | 日志文件路径 | ocr_server.log |
-| log_max_size | 日志文件最大大小（MB） | 100 |
-| log_max_backups | 保留的旧日志文件最大数量 | 3 |
-| log_max_age | 保留旧日志文件的最大天数 | 28 |
-| log_compress | 是否压缩轮转的日志文件 | true |
-| threshold-mode | 阈值模式 | 0  |
-| threshold-value | 阈值 | 100 |
+| `addr` | 服务监听的 IP 地址 | `localhost` |
+| `port` | 暴露的网络端口 | `1111` |
+| `ocr_exe_path` | 引擎可执行文件的绝对路径 | 自动扫描或下载 |
+| `min_processors` | 常驻内存的最小进程数 | `4` |
+| `max_processors` | 允许弹出的最大进程数 | `CPU 物理核心数` |
+| `queue_size` | 等待处理的任务缓冲池大小 | `100` |
+| `scale_threshold` | 触发自动扩容的阈值（%） | `75` |
+| `degrade_threshold` | 触发自动缩容的闲置阈值（%） | `25` |
+| `idle_timeout` | 空闲进程的存活时间 | `5分钟` |
+| `warm_up_count` | 预留的备用热启动进程数 | `2` |
+| `shutdown_timeout` | 平滑退出的等待超时时间 | `30秒` |
+| `log_file_path` | 运行日志输出路径 | `ocr_server.log` |
+| `log_max_size` | 单个日志包最大体积(MB) | `100` |
+| `log_max_backups` | 历史日志保留份数 | `3` |
+| `log_max_age` | 历史日志最长保留期限(天) | `28` |
+| `log_compress` | 是否开启归档日志 Gzip 压缩 | `true` |
+| `threshold-mode` | 图像预处理：二值化算法模式 | `0` |
+| `threshold-value`| 图像预处理：固定阈值参数 | `100` |
 
-阈值处理相关选项说明：
+### 关于图像二值化（预处理）的特别说明：
+- **模式 `0` ("binary")**：强制采用 `threshold-value` 指定的固定值（0-255）对图片进行切分二值化。
+- **模式 `1` ("otsu")**：启用大津算法（Otsu's Method），系统将针对每张图片自动求算最佳的全局阈值（此时会忽略 `threshold-value` 配置）。这在文档扫描或背景对比度鲜明的场景下表现极佳。
 
-1. threshold-mode:
-   - 描述：指定图像二值化时使用的阈值处理模式。
-   - 可选值：
-     - 参数 0 = "binary": 使用固定阈值进行二值化
-     - 参数 1 = "otsu": 使用Otsu算法自动计算最佳阈值
-   - 默认值：0
+---
 
-2. threshold-value:
-   - 描述：当 threshold-mode 为 0 "binary" 时使用的固定阈值。
-   - 取值范围：0-255
-   - 默认值：100
-   - 注意：当 threshold-mode 为 1 "otsu" 时，此值会被忽略，因为Otsu算法会自动计算最佳阈值。
+## 技术架构
 
-使用说明：
-- 如果您希望使用固定阈值进行图像二值化，请将 threshold-mode 设置为 "binary"，并通过 threshold-value 指定所需的阈值（0-255之间的整数）。
-- 如果您希望系统自动确定最佳阈值，请将 threshold-mode 设置为 "otsu"。在这种情况下，threshold-value 的设置将被忽略。
-- Otsu方法特别适用于具有双峰直方图的图像（即前景和背景有明显区分的图像），它能够自动找到最佳的分割阈值。
+ocr-server-go 在内部划分了清晰的职责边界，以实现代码的健壮性：
 
-## 架构设计
+1. **流量网关 (Server)**：接管 HTTP 连接、解析请求、管理数据流的进出。
+2. **实例管理池 (Processor Pool)**：作为系统的“心脏”，调度与维持多组并发的 OCR 处理单元。
+3. **缓冲队列 (Task Queue)**：应对突发流量的“蓄水池”，避免因并发过高导致系统崩溃。
+4. **图像解析层 (OCR Engine)**：深度绑定 PaddleOCR，完成图片到文字的提取算力消耗。
+5. **基础设施矩阵**：涵盖了动态配置读取 (`Config`)、结构化日志记录 (`Logger`)、运行时指标收集 (`Stats`)。
 
-OCR 服务器采用了模块化的设计，主要包含以下组件：
-
-1. **主服务器（Server）**：负责 HTTP 请求的处理、任务分发和整体协调。
-2. **处理器池（Processor Pool）**：管理多个 OCR 处理器，进行动态扩缩容。
-3. **任务队列（Task Queue）**：缓冲传入的 OCR 请求，确保平稳处理。
-4. **OCR 引擎（OCR Engine）**：封装 PaddleOCR，执行实际的 OCR 操作。
-5. **配置管理（Config）**：处理服务器配置的加载和验证。
-6. **日志系统（Logger）**：提供详细的日志记录功能。
-7. **统计模块（Stats）**：收集和提供服务器性能指标。
-
-### 流程图
-
+**处理链路简图**：
 ```mermaid
-graph TD
-    A[客户端] -->|HTTP 请求| B(主服务器)
-    B -->|放入队列| C{任务队列}
-    C -->|分发任务| D[处理器池]
-    D -->|执行 OCR| E[OCR 引擎]
-    E -->|返回结果| D
-    D -->|返回结果| B
-    B -->|HTTP 响应| A
-    F[配置管理] -->|加载配置| B
-    G[日志系统] -->|记录日志| B
-    H[统计模块] <-->|收集/提供指标| B
+graph LR
+    Client(客户端) -- HTTP POST --> Gateway(路由网关)
+    Gateway -- 进入任务队列 --> Queue{缓冲队列}
+    Queue -- 派发空闲进程 --> Pool[处理器资源池]
+    Pool -- 唤醒底层引擎 --> Engine((PaddleOCR Engine))
+    Engine -. 识别完成 .-> Pool
+    Pool -. 数据聚合 .-> Gateway
+    Gateway -. 序列化 JSON 返回 .-> Client
 ```
 
-### 关键组件说明
+---
 
-1. **主服务器（Server）**
-   - 负责 HTTP 服务器的启动和关闭
-   - 管理处理器池和任务队列
-   - 处理入站请求并返回结果
-   - 协调其他组件的工作
+## 性能表现
 
-2. **处理器池（Processor Pool）**
-   - 维护一组 OCR 处理器
-   - 根据负载动态调整处理器数量
-   - 实现处理器的健康检查和自动恢复
+本项目对高负载场景做了大量针对性强化：
+- 基于协程的高效非阻塞队列，实现极低的排队延迟。
+- 根据真实吞吐量自动加减底层进程，达成性能与资源的完美平衡。
+- `Warm-up` 预热策略有效规避了冷启动引发的性能抖动。
+- Base64 流传输直进直出，尽可能绕过了磁盘 I/O 带来的短板效应。
 
-3. **任务队列（Task Queue）**
-   - 使用 channel 实现的 FIFO 队列
-   - 缓冲入站请求，防止系统过载
-   - 允许异步处理请求
+---
 
-4. **OCR 引擎（OCR Engine）**
-   - 封装 PaddleOCR 库
-   - 提供图像到文本的转换功能
-   - 处理不同格式的输入（文件路径或 base64）
+## 常见问题
 
-5. **配置管理（Config）**
-   - 从 YAML 文件、环境变量和命令行参数加载配置
-   - 验证配置的正确性
-   - 提供默认值和合理的约束
+**Q: 启动后无法识别，报错 OCR Engine NotFound？**
+A: 请确保运行服务器具备外网访问权限以便自动下载依赖，或者你也可以手动下载 PaddleOCR-json 并将绝对路径写入 `ocr_exe_path` 配置中。
 
-6. **日志系统（Logger）**
-   - 使用分级日志（INFO、WARNING、ERROR）
-   - 支持日志轮转和压缩
-   - 同时输出到控制台和文件
-
-7. **统计模块（Stats）**
-   - 收集关键性能指标（请求数、处理时间等）
-   - 提供 /stats 端点以供监控
-
-### 请求处理流程
-
-1. 客户端发送 HTTP POST 请求到服务器
-2. 主服务器接收请求并创建 OCR 任务
-3. 任务被放入任务队列
-4. 处理器池中的可用处理器从队列中获取任务
-5. 处理器调用 OCR 引擎执行文本识别
-6. OCR 结果返回给处理器，然后返回给主服务器
-7. 主服务器将结果作为 HTTP 响应发送给客户端
-
-### 扩展性和容错
-
-- 处理器池根据队列长度和处理器使用率动态调整大小
-- 定期进行健康检查，自动重启不健康的处理器
-- 使用退避策略进行重试，增强系统的鲁棒性
-- 优雅关闭机制确保正在处理的任务能够完成
-
-## 性能优化
-
-- 使用处理器池和任务队列实现高并发处理
-- 动态扩缩容以适应不同的负载情况
-- 实现预热机制，减少冷启动时间
-- 使用 base64 输入选项减少文件 I/O 操作
-- 详细的性能指标收集，便于进行性能调优
+**Q: 在高并发下服务器内存飙升？**
+A: 请检查是否配置了过大的 `max_processors`，每个引擎子进程都会占用独立的系统内存资源，请结合你的物理服务器内存进行合理缩减。
 
 
+## 开源协议
 
-## 故障排除
-
-如果您遇到问题，请检查以下几点：
-
-1. 确保 PaddleOCR 模型已正确下载和安装
-2. 检查日志文件中是否有错误信息
-3. 验证配置文件的正确性
-4. 确保有足够的系统资源（CPU、内存）
-
-如果问题仍然存在，请在 GitHub 上开启一个 issue，并提供详细的问题描述和日志信息。
-
-## 致谢
-
-OCR 服务器项目的开发离不开众多优秀的开源项目和社区的支持。我们在此特别感谢以下项目和贡献者：
-
-- [Go 语言](https://golang.org/)：感谢 Go 团队开发了这门高效、简洁的编程语言，为我们提供了强大的开发工具和丰富的标准库。
-
-- [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)：感谢百度开源的这个强大的 OCR 工具箱，为我们提供了高精度的文字识别能力。
-
-- [PaddleOCR-json](https://github.com/hiroi-sora/PaddleOCR-json)：特别感谢 hiroi-sora 开发的这个项目，它为 PaddleOCR 提供了便捷的 JSON 接口，大大简化了我们的集成工作。
-
-我们还要感谢以下 Go 语言库的作者和维护者：
-
-- [viper](https://github.com/spf13/viper)：优秀的配置解决方案。
-- [validator](https://github.com/go-playground/validator)：强大的数据验证库。
-- [lumberjack](https://github.com/natefinch/lumberjack)：可靠的日志轮转工具。
-- [backoff](https://github.com/cenkalti/backoff)：实用的重试库。
-- [go-unarr](https://github.com/gen2brain/go-unarr)：方便的解压缩工具。
-- [paddleocr](https://github.com/doraemonkeys/paddleocr)：一个简单易用的 PaddleOCR-json golang 客户端。
-- [yaml](gopkg.in/yaml.v2)：YAML 配置文件的解析库。
-
-这些开源项目为我们的开发工作提供了宝贵的支持，使得 OCR 服务器的开发成为可能。我们深深感谢这些项目的贡献者们付出的努力和分享精神。
-
-同时，我们也要感谢所有为这个项目提供反馈、建议和贡献的用户和开发者。你们的参与让这个项目不断进步和完善。
-
-如果在使用过程中发现任何问题或有任何改进建议，欢迎在 GitHub 上提出 issue 或 pull request。让我们一起努力，使这个项目变得更好！
-
-## 许可证
-
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+本项目遵守 MIT 开源协议 - 详见 [LICENSE](LICENSE) 文档。
