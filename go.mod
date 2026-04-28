@@ -1,4 +1,4 @@
-module github.com/suifei/ocr-server
+module github.com/wang-zhibo/ocr-server-go
 
 go 1.22.3
 

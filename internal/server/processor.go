@@ -11,8 +11,8 @@ import (
 
 	"github.com/cenkalti/backoff"
 	"github.com/doraemonkeys/paddleocr"
-	"github.com/suifei/ocr-server/internal/imgproc"
-	"github.com/suifei/ocr-server/pkg/ocrengine"
+	"github.com/wang-zhibo/ocr-server-go/internal/imgproc"
+	"github.com/wang-zhibo/ocr-server-go/pkg/ocrengine"
 )
 
 type OCRProcessor struct {

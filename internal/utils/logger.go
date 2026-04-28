@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/suifei/ocr-server/internal/config"
+	"github.com/wang-zhibo/ocr-server-go/internal/config"
 
 	"gopkg.in/natefinch/lumberjack.v2"
 )

@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/spf13/viper"
-	"github.com/suifei/ocr-server/internal/ocr"
+	"github.com/wang-zhibo/ocr-server-go/internal/ocr"
 	"gopkg.in/yaml.v2"
 )
 

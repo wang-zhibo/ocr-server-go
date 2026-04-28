@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/suifei/ocr-server/internal/utils"
+	"github.com/wang-zhibo/ocr-server-go/internal/utils"
 )
 
 type ocrRequest struct {

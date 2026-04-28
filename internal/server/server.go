@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/suifei/ocr-server/internal/config"
-	"github.com/suifei/ocr-server/internal/utils"
+	"github.com/wang-zhibo/ocr-server-go/internal/config"
+	"github.com/wang-zhibo/ocr-server-go/internal/utils"
 )
 
 type Server struct {

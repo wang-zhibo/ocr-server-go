@@ -31,7 +31,7 @@
 
 1. **获取代码**：
 ```bash
-git clone https://github.com/suifei/ocr-server-go.git
+git clone https://github.com/wang-zhibo/ocr-server-go-go.git
 ```
 2. **进入工作区**：
 ```bash

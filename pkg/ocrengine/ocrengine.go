@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/doraemonkeys/paddleocr"
-	"github.com/suifei/ocr-server/internal/utils"
+	"github.com/wang-zhibo/ocr-server-go/internal/utils"
 )
 
 type OCREngine struct {

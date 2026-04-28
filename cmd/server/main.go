@@ -6,9 +6,9 @@ import (
 	"os"
 	"runtime/debug"
 
-	"github.com/suifei/ocr-server/internal/config"
-	"github.com/suifei/ocr-server/internal/server"
-	"github.com/suifei/ocr-server/internal/utils"
+	"github.com/wang-zhibo/ocr-server-go/internal/config"
+	"github.com/wang-zhibo/ocr-server-go/internal/server"
+	"github.com/wang-zhibo/ocr-server-go/internal/utils"
 )
 
 var (
